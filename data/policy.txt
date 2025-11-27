@@ -1,0 +1,58 @@
+SỔ TAY QUY ĐỊNH VÀ HƯỚNG DẪN SỬ DỤNG HỆ THỐNG PHÒNG HỌP CMC
+
+PHẦN 1: QUY TẮC ĐẶT LỊCH (BOOKING RULES)
+1. Nguyên tắc phê duyệt (Approval):
+- Hiện tại, để đảm bảo tối ưu hóa tài nguyên, TẤT CẢ các yêu cầu đặt phòng (bao gồm cả phòng Thường và phòng VIP) đều cần sự phê duyệt của Ban Quản trị (Admin).
+- Sau khi tạo yêu cầu, trạng thái lịch họp sẽ là "Chờ duyệt" (Pending Approval). Bạn sẽ nhận được email thông báo ngay khi Admin xử lý (Chấp nhận hoặc Từ chối).
+- Thời gian xử lý duyệt: Thường trong vòng 2 giờ làm việc.
+
+2. Thời gian đặt phòng:
+- Thời gian tối thiểu cho một cuộc họp là 15 phút.
+- Thời gian tối đa cho một cuộc họp là 4 tiếng liên tục. Nếu cần đặt lâu hơn (ví dụ Training cả ngày), vui lòng chia nhỏ thành 2 buổi sáng/chiều hoặc liên hệ trực tiếp IT Helpdesk.
+- Khuyến khích đặt phòng trước ít nhất 24 giờ để đảm bảo có phòng trống.
+
+3. Đặt lịch định kỳ (Recurring):
+- Hệ thống hỗ trợ đặt lịch lặp lại (Hàng ngày, Hàng tuần).
+- Tuy nhiên, chuỗi lịch định kỳ chỉ được phép kéo dài tối đa 6 tháng. Sau 6 tháng, bạn cần tạo yêu cầu mới.
+
+PHẦN 2: QUY ĐỊNH VỀ THAY ĐỔI VÀ HỦY BỎ (CHANGE & CANCELLATION)
+1. Hủy lịch họp:
+- Nếu thay đổi kế hoạch, Người tổ chức (Organizer) có trách nhiệm hủy lịch họp trên hệ thống càng sớm càng tốt để nhường phòng cho người khác.
+- Thời hạn hủy: Phải hủy trước ít nhất 30 phút so với giờ bắt đầu.
+- Lý do hủy: Bắt buộc phải nhập lý do khi thực hiện hủy để phục vụ công tác thống kê cuối tháng.
+
+2. Cập nhật thông tin:
+- Chỉ Người tổ chức mới có quyền sửa đổi thông tin cuộc họp (Thêm người, đổi giờ, đổi phòng).
+- Lưu ý: Việc thay đổi thời gian hoặc phòng họp sẽ kích hoạt lại quy trình phê duyệt từ đầu (Trạng thái quay về "Chờ duyệt").
+
+PHẦN 3: QUY TRÌNH CHECK-IN VÀ "GHOST MEETING"
+1. Cơ chế Check-in:
+- Để xác thực việc sử dụng phòng thực tế, Người tổ chức bắt buộc phải Check-in khi đến phòng họp.
+- Phương thức: Quét mã QR dán tại cửa phòng hoặc bấm nút "Check-in" trên ứng dụng Mobile/Web.
+
+2. Khung giờ vàng:
+- Cổng Check-in mở: 30 phút trước giờ họp.
+- Cổng Check-in đóng: 15 phút sau giờ họp bắt đầu.
+
+3. Xử lý vi phạm (Ghost Meeting):
+- Nếu quá 15 phút đầu giờ mà không có Check-in, hệ thống sẽ tự động coi đây là "Cuộc họp ma" (Ghost Meeting).
+- Hệ thống sẽ TỰ ĐỘNG HỦY lịch họp đó để giải phóng phòng.
+- Vi phạm này sẽ được ghi lại trong báo cáo tháng của nhân sự.
+
+PHẦN 4: QUẢN LÝ THIẾT BỊ VÀ TÀI SẢN (DEVICES)
+1. Thiết bị cố định:
+- Các thiết bị gắn liền (TV, Máy chiếu treo trần, Bảng kính) là tài sản cố định của phòng, không được di chuyển sang phòng khác.
+
+2. Thiết bị lưu động:
+- Các thiết bị như: Loa hội nghị, Mic không dây, Bảng Flipchart, Laptop demo... cần được đăng ký trước khi đặt lịch.
+- Bạn phải chọn cụ thể trong mục "Thiết bị" (Devices) khi tạo yêu cầu.
+- Người tổ chức chịu trách nhiệm bàn giao lại thiết bị nguyên vẹn sau khi họp xong.
+
+PHẦN 5: QUY ĐỊNH VỀ KHÁCH MỜI (GUESTS)
+1. Khách nội bộ:
+- Cán bộ nhân viên công ty cần được add vào danh sách tham dự (Participants) để nhận thông báo và lịch Google Calendar.
+
+2. Khách bên ngoài (External Guests):
+- Đối với khách hàng hoặc đối tác không có email công ty (@cmc.com), bạn phải nhập email của họ vào mục "Khách mời" (Guest Emails).
+- Hệ thống sẽ gửi email thư mời có chứa thông tin địa điểm tòa nhà, hướng dẫn gửi xe và quy định ra vào để khách chủ động.
+- Dữ liệu khách mời sẽ được đồng bộ sang bộ phận Lễ tân để chuẩn bị thẻ ra vào.
