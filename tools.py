@@ -87,12 +87,39 @@ def find_available_rooms(token: str, start_time: str, end_time: str, capacity: i
     except Exception as e:
         return {"error": str(e)}
 
-def get_my_meetings(token: str):
+def get_my_meetings(token: str, date_filter: str = None):
+    """
+    Xem lịch họp của tôi.
+    Args:
+        token: JWT Token
+        date_filter: (Optional) Ngày cần lọc (Format: YYYY-MM-DD). Ví dụ: '2025-11-29'.
+    """
     url = f"{JAVA_BACKEND_URL}/meetings/my-meetings"
     try:
-        response = requests.get(url, headers=_get_headers(token))
+        # Lấy số lượng lớn một chút để đảm bảo lọc được ngày cần tìm (vì Java phân trang)
+        response = requests.get(url, headers=_get_headers(token), params={"size": 50})
+        
         if response.status_code == 200:
-            return response.json().get("content", [])
+            data = response.json()
+            meetings = data.get("content", [])
+            
+            # --- LOGIC LỌC THEO NGÀY (NẾU CÓ) ---
+            if date_filter:
+                filtered_meetings = []
+                for m in meetings:
+                    # startTime dạng "2025-11-29T09:00:00" -> Lấy 10 ký tự đầu để so sánh
+                    start_time = m.get("startTime", "")
+                    if start_time.startswith(date_filter):
+                        filtered_meetings.append(m)
+                
+                # Nếu lọc xong mà không có gì -> Trả về thông báo rõ ràng cho AI
+                if not filtered_meetings:
+                    return f"Hệ thống: Không tìm thấy lịch họp nào của bạn vào ngày {date_filter}."
+                
+                return filtered_meetings
+            
+            return meetings
+            
         return {"error": response.text}
     except Exception as e:
         return {"error": str(e)}
@@ -195,7 +222,53 @@ def check_in_meeting(token: str, room_id: int):
         return {"success": True, "msg": response.text} if response.status_code == 200 else {"error": response.text}
     except Exception as e:
         return {"error": str(e)}
+def find_available_devices(token: str, start_time: str, end_time: str):
+    """Tìm thiết bị rảnh theo giờ."""
+    url = f"{JAVA_BACKEND_URL}/devices/available"
+    params = {"startTime": start_time, "endTime": end_time}
+    try:
+        response = requests.get(url, headers=_get_headers(token), params=params)
+        return response.json() if response.status_code == 200 else {"error": response.text}
+    except Exception as e:
+        return {"error": str(e)}
 
+def check_in_by_qr(token: str, qr_code: str):
+    """Check-in bằng chuỗi mã QR."""
+    url = f"{JAVA_BACKEND_URL}/meetings/check-in/qr"
+    payload = {"qrCode": qr_code}
+    try:
+        response = requests.post(url, headers=_get_headers(token), json=payload)
+        # API trả về String message (không phải JSON)
+        return {"success": True, "message": response.text} if response.status_code == 200 else {"error": response.text}
+    except Exception as e:
+        return {"error": str(e)}
+
+def update_meeting_series(token: str, series_id: str, title: str, start_time: str, end_time: str, 
+                          room_id: int, participant_ids: list[int], description: str = "", recurrence: dict = None):
+    """Cập nhật toàn bộ CHUỖI lịch định kỳ."""
+    url = f"{JAVA_BACKEND_URL}/meetings/series/{series_id}"
+    payload = {
+        "title": title, "description": description,
+        "startTime": start_time, "endTime": end_time,
+        "roomId": room_id, "participantIds": participant_ids,
+        "deviceIds": [], "guestEmails": []
+    }
+    if recurrence: payload["recurrenceRule"] = recurrence
+    
+    try:
+        response = requests.put(url, headers=_get_headers(token), json=payload)
+        return response.json() if response.status_code == 200 else {"error": response.text}
+    except Exception as e:
+        return {"error": str(e)}
+
+def cancel_meeting_series(token: str, series_id: str, reason: str):
+    """Hủy toàn bộ CHUỖI lịch định kỳ."""
+    url = f"{JAVA_BACKEND_URL}/meetings/series/{series_id}"
+    try:
+        response = requests.request("DELETE", url, headers=_get_headers(token), json={"reason": reason})
+        return {"success": True, "message": "Đã hủy chuỗi thành công."} if response.status_code == 200 else {"error": response.text}
+    except Exception as e:
+        return {"error": str(e)}
 # Export tool mapping
 available_tools = {
     "search_policy": search_policy,
@@ -205,5 +278,8 @@ available_tools = {
     "get_contact_groups": get_contact_groups, "suggest_meeting_time": suggest_meeting_time,
     "create_meeting": create_meeting, "cancel_meeting": cancel_meeting,
     "update_meeting": update_meeting, "respond_invitation": respond_invitation,
-    "check_in_meeting": check_in_meeting
+    "check_in_meeting": check_in_meeting, "find_available_devices": find_available_devices,
+    "check_in_by_qr": check_in_by_qr,
+    "update_meeting_series": update_meeting_series,
+    "cancel_meeting_series": cancel_meeting_series
 }

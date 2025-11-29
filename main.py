@@ -1,11 +1,30 @@
+import os
+from dotenv import load_dotenv # Import thêm
 from fastapi import FastAPI, Header, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from agent import simple_chat
 import uvicorn
 
+# 1. Load biến môi trường
+load_dotenv()
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173") # Giá trị mặc định nếu quên config
+
 app = FastAPI()
 
-# Model dữ liệu nhận từ Frontend
+# 2. Cấu hình CORS Dynamic
+origins = [
+    FRONTEND_URL,           # Lấy từ .env
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 class ChatPayload(BaseModel):
     message: str
 
@@ -15,16 +34,10 @@ def health_check():
 
 @app.post("/api/chat")
 async def chat(payload: ChatPayload, authorization: str = Header(None)):
-    """
-    API Chatbot:
-    - Nhận tin nhắn từ user.
-    - Nhận JWT Token từ Header.
-    - Gọi Agent xử lý.
-    """
     if not authorization:
         raise HTTPException(status_code=401, detail="Token is missing")
     
-    # Lấy token (bỏ chữ Bearer nếu có, nhưng ở đây ta truyền nguyên chuỗi cũng được vì tools.py đã xử lý)
+    # Lấy token (bỏ chữ Bearer nếu có)
     user_token = authorization.replace("Bearer ", "")
     
     try:
