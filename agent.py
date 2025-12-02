@@ -14,7 +14,7 @@ from google.ai.generativelanguage import Content, Part, FunctionResponse
 load_dotenv()
 api_key = os.getenv("GEMINI_API_KEY")
 if not api_key:
-    raise ValueError("Missing GEMINI_API_KEY")
+    raise ValueError("Missing GEMINI_API_KEY in .env file")
 
 genai.configure(api_key=api_key)
 
@@ -36,12 +36,31 @@ except Exception as e:
     print(f"[ERROR] Redis connection failed: {e}")
     redis_client = None
 
-# 3. Tool Definitions (GIỮ NGUYÊN CẤU TRÚC PROTOBUF CHUẨN)
-# (Để tiết kiệm dòng, tôi gộp phần định nghĩa schema đã đúng ở phiên bản trước)
-# ... Bạn giữ nguyên phần định nghĩa FunctionDeclaration từ code trước ...
-# ... Nếu lỡ xóa, hãy bảo tôi gửi lại đoạn Schema này ...
+# 3. SCHEMA DEFINITIONS (Định nghĩa cấu trúc dữ liệu chuẩn)
 
-# --- Tái sử dụng Schema từ phiên bản trước (Đảm bảo bạn copy đủ list tools_list) ---
+# --- RECURRENCE SCHEMA ---
+recurrence_schema = Schema(
+    type=Type.OBJECT,
+    properties={
+        "frequency": Schema(
+            type=Type.STRING,
+            enum=["DAILY", "WEEKLY", "MONTHLY", "YEARLY"]
+        ),
+        "interval": Schema(type=Type.INTEGER, description="Ví dụ: 1 (mỗi tuần), 2 (mỗi 2 tuần)"),
+        "repeatUntil": Schema(type=Type.STRING, description="Ngày kết thúc lặp. Format: YYYY-MM-DD"),
+        "daysOfWeek": Schema(
+            type=Type.ARRAY,
+            items=Schema(
+                type=Type.STRING,
+                enum=["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"]
+            )
+        )
+    },
+    required=["frequency", "interval", "repeatUntil"]
+)
+
+# 4. TOOL DEFINITIONS
+
 search_users_func = FunctionDeclaration(
     name="search_users", description="Tìm ID người dùng theo tên/email.",
     parameters=Schema(type=Type.OBJECT, properties={"query": Schema(type=Type.STRING)}, required=["query"])
@@ -51,28 +70,39 @@ get_rooms_func = FunctionDeclaration(
     parameters=Schema(type=Type.OBJECT, properties={})
 )
 find_avail_func = FunctionDeclaration(
-    name="find_available_rooms", description="Tìm phòng trống.",
+    name="find_available_rooms", description="Tìm phòng trống theo giờ.",
     parameters=Schema(type=Type.OBJECT, properties={"start_time": Schema(type=Type.STRING), "end_time": Schema(type=Type.STRING), "capacity": Schema(type=Type.INTEGER)}, required=["start_time", "end_time"])
 )
 get_meetings_func = FunctionDeclaration(
-    name="get_my_meetings", description="Xem lịch họp. Dùng date_filter nếu cần lọc ngày.",
+    name="get_my_meetings", description="Xem lịch họp cá nhân. Dùng date_filter nếu cần lọc ngày cụ thể.",
     parameters=Schema(type=Type.OBJECT, properties={"date_filter": Schema(type=Type.STRING)})
 )
 get_details_func = FunctionDeclaration(
-    name="get_meeting_details", description="Xem chi tiết 1 cuộc họp.",
+    name="get_meeting_details", description="Xem chi tiết 1 cuộc họp (để lấy seriesId).",
     parameters=Schema(type=Type.OBJECT, properties={"meeting_id": Schema(type=Type.INTEGER)}, required=["meeting_id"])
 )
+
+# --- CREATE MEETING ---
 create_meeting_func = FunctionDeclaration(
-    name="create_meeting", description="Tạo cuộc họp.",
-    parameters=Schema(type=Type.OBJECT, properties={
-        "title": Schema(type=Type.STRING), "start_time": Schema(type=Type.STRING), "end_time": Schema(type=Type.STRING),
-        "room_id": Schema(type=Type.INTEGER), "participant_ids": Schema(type=Type.ARRAY, items=Schema(type=Type.INTEGER)),
-        "device_ids": Schema(type=Type.ARRAY, items=Schema(type=Type.INTEGER)), "description": Schema(type=Type.STRING),
-        "recurrence": Schema(type=Type.OBJECT, properties={"frequency": Schema(type=Type.STRING), "interval": Schema(type=Type.INTEGER), "repeatUntil": Schema(type=Type.STRING), "daysOfWeek": Schema(type=Type.ARRAY, items=Schema(type=Type.STRING))}, required=["frequency", "interval", "repeatUntil"])
-    }, required=["title", "start_time", "end_time", "room_id"])
+    name="create_meeting", description="Tạo cuộc họp mới (đơn lẻ hoặc định kỳ).",
+    parameters=Schema(
+        type=Type.OBJECT, 
+        properties={
+            "title": Schema(type=Type.STRING), 
+            "start_time": Schema(type=Type.STRING, description="ISO 8601 Format: YYYY-MM-DDTHH:mm:ss"), 
+            "end_time": Schema(type=Type.STRING, description="ISO 8601 Format: YYYY-MM-DDTHH:mm:ss"),
+            "room_id": Schema(type=Type.INTEGER), 
+            "participant_ids": Schema(type=Type.ARRAY, items=Schema(type=Type.INTEGER)),
+            "device_ids": Schema(type=Type.ARRAY, items=Schema(type=Type.INTEGER)), 
+            "description": Schema(type=Type.STRING),
+            "recurrence": recurrence_schema
+        }, 
+        required=["title", "start_time", "end_time", "room_id"]
+    )
 )
+
 cancel_meeting_func = FunctionDeclaration(
-    name="cancel_meeting", description="Hủy cuộc họp.",
+    name="cancel_meeting", description="Hủy MỘT cuộc họp lẻ.",
     parameters=Schema(type=Type.OBJECT, properties={"meeting_id": Schema(type=Type.INTEGER), "reason": Schema(type=Type.STRING)}, required=["meeting_id", "reason"])
 )
 get_devices_func = FunctionDeclaration(
@@ -80,7 +110,7 @@ get_devices_func = FunctionDeclaration(
     parameters=Schema(type=Type.OBJECT, properties={})
 )
 update_meeting_func = FunctionDeclaration(
-    name="update_meeting", description="Sửa cuộc họp.",
+    name="update_meeting", description="Sửa MỘT cuộc họp lẻ.",
     parameters=Schema(type=Type.OBJECT, properties={
         "meeting_id": Schema(type=Type.INTEGER), "title": Schema(type=Type.STRING), "start_time": Schema(type=Type.STRING),
         "end_time": Schema(type=Type.STRING), "room_id": Schema(type=Type.INTEGER), "participant_ids": Schema(type=Type.ARRAY, items=Schema(type=Type.INTEGER)), "description": Schema(type=Type.STRING)
@@ -95,19 +125,19 @@ notif_func = FunctionDeclaration(
     parameters=Schema(type=Type.OBJECT, properties={})
 )
 checkin_func = FunctionDeclaration(
-    name="check_in_meeting", description="Check-in.",
+    name="check_in_meeting", description="Check-in vào phòng.",
     parameters=Schema(type=Type.OBJECT, properties={"room_id": Schema(type=Type.INTEGER)}, required=["room_id"])
 )
 suggest_time_func = FunctionDeclaration(
-    name="suggest_meeting_time", description="Gợi ý giờ họp.",
+    name="suggest_meeting_time", description="Gợi ý giờ họp phù hợp cho các thành viên.",
     parameters=Schema(type=Type.OBJECT, properties={"participant_ids": Schema(type=Type.ARRAY, items=Schema(type=Type.INTEGER)), "start_date": Schema(type=Type.STRING), "end_date": Schema(type=Type.STRING), "duration": Schema(type=Type.INTEGER)}, required=["participant_ids", "start_date", "end_date"])
 )
 get_groups_func = FunctionDeclaration(
-    name="get_contact_groups", description="Lấy nhóm liên hệ.",
+    name="get_contact_groups", description="Lấy danh sách nhóm liên hệ.",
     parameters=Schema(type=Type.OBJECT, properties={})
 )
 search_policy_func = FunctionDeclaration(
-    name="search_policy", description="Tra cứu quy định.",
+    name="search_policy", description="Tra cứu quy định, chính sách công ty.",
     parameters=Schema(type=Type.OBJECT, properties={"query": Schema(type=Type.STRING)}, required=["query"])
 )
 find_avail_devices_func = FunctionDeclaration(
@@ -115,21 +145,31 @@ find_avail_devices_func = FunctionDeclaration(
     parameters=Schema(type=Type.OBJECT, properties={"start_time": Schema(type=Type.STRING), "end_time": Schema(type=Type.STRING)}, required=["start_time", "end_time"])
 )
 checkin_qr_func = FunctionDeclaration(
-    name="check_in_by_qr", description="Check-in bằng mã QR.",
+    name="check_in_by_qr", description="Check-in bằng mã QR code.",
     parameters=Schema(type=Type.OBJECT, properties={"qr_code": Schema(type=Type.STRING)}, required=["qr_code"])
 )
+
+# --- SERIES TOOLS ---
 cancel_series_func = FunctionDeclaration(
-    name="cancel_meeting_series", description="Hủy chuỗi lịch.",
+    name="cancel_meeting_series", description="Hủy TOÀN BỘ chuỗi lịch định kỳ.",
     parameters=Schema(type=Type.OBJECT, properties={"series_id": Schema(type=Type.STRING), "reason": Schema(type=Type.STRING)}, required=["series_id", "reason"])
 )
 update_series_func = FunctionDeclaration(
-    name="update_meeting_series", description="Sửa chuỗi lịch.",
-    parameters=Schema(type=Type.OBJECT, properties={
-        "series_id": Schema(type=Type.STRING), "title": Schema(type=Type.STRING), "start_time": Schema(type=Type.STRING),
-        "end_time": Schema(type=Type.STRING), "room_id": Schema(type=Type.INTEGER), "participant_ids": Schema(type=Type.ARRAY, items=Schema(type=Type.INTEGER)),
-        "description": Schema(type=Type.STRING),
-        "recurrence": Schema(type=Type.OBJECT, properties={"frequency": Schema(type=Type.STRING), "interval": Schema(type=Type.INTEGER), "repeatUntil": Schema(type=Type.STRING), "daysOfWeek": Schema(type=Type.ARRAY, items=Schema(type=Type.STRING))}, required=["frequency", "interval", "repeatUntil"])
-    }, required=["series_id", "title", "start_time", "end_time", "room_id", "recurrence"])
+    name="update_meeting_series", description="Sửa TOÀN BỘ chuỗi lịch định kỳ.",
+    parameters=Schema(
+        type=Type.OBJECT, 
+        properties={
+            "series_id": Schema(type=Type.STRING), 
+            "title": Schema(type=Type.STRING), 
+            "start_time": Schema(type=Type.STRING),
+            "end_time": Schema(type=Type.STRING), 
+            "room_id": Schema(type=Type.INTEGER), 
+            "participant_ids": Schema(type=Type.ARRAY, items=Schema(type=Type.INTEGER)),
+            "description": Schema(type=Type.STRING),
+            "recurrence": recurrence_schema
+        }, 
+        required=["series_id", "title", "start_time", "end_time", "room_id", "recurrence"]
+    )
 )
 
 tools_list = [
@@ -141,9 +181,9 @@ tools_list = [
 ]
 
 meeting_tools = Tool(function_declarations=tools_list)
-model = genai.GenerativeModel(model_name='models/gemini-2.0-flash', tools=[meeting_tools])
+model = genai.GenerativeModel(model_name='models/gemini-2.5-flash', tools=[meeting_tools])
 
-# 4. Redis Logic (GIỮ NGUYÊN)
+# 5. REDIS LOGIC
 def get_chat_history(user_token: str):
     if not redis_client: return []
     key = f"chat_history:{user_token}"
@@ -163,12 +203,12 @@ def save_chat_turn(user_token: str, user_msg: str, bot_msg: str):
         hist = json.loads(data) if data else []
         hist.append({"role": "user", "text": user_msg})
         hist.append({"role": "model", "text": bot_msg})
-        if len(hist) > 10: hist = hist[-10:] # Giữ ít thôi cho đỡ loạn context
+        if len(hist) > 10: hist = hist[-10:] 
         redis_client.set(key, json.dumps(hist))
-        redis_client.expire(key, 1800) # 30 phút timeout
+        redis_client.expire(key, 1800) 
     except: pass
 
-# 5. MAIN LOGIC - PHẦN QUAN TRỌNG NHẤT
+# 6. MAIN CHAT LOGIC (QUAN TRỌNG: ĐÃ THÊM LOGIC SỬA LỖI REPEATEDCOMPOSITE)
 async def simple_chat(user_message: str, user_token: str):
     history = get_chat_history(user_token)
     chat = model.start_chat(history=history, enable_automatic_function_calling=False)
@@ -177,51 +217,49 @@ async def simple_chat(user_message: str, user_token: str):
     current_time_str = now.strftime('%Y-%m-%d %H:%M:%S')
     today_date = now.strftime('%Y-%m-%d')
     
-    # --- SYSTEM PROMPT TỐI ƯU HÓA "ĐÚNG TRỌNG TÂM" ---
     system_instruction = f"""
-    [VAI TRÒ] Bạn là Trợ lý Ảo chuyên nghiệp của CMC Meeting. Bạn KHÔNG phải là chatbot giao tiếp xã giao. Hãy trả lời ngắn gọn, đi thẳng vào vấn đề.
+    [VAI TRÒ] Bạn là Trợ lý Ảo CMC Meeting chuyên nghiệp.
     
     [THÔNG TIN HIỆN TẠI]
     - Thời gian thực: {current_time_str} (Thứ {now.weekday() + 2}).
     - Hôm nay là: {today_date}.
     
-    [NGUYÊN TẮC XỬ LÝ - TUÂN THỦ TUYỆT ĐỐI]
-    1. **KHÔNG BAO GIỜ BỊA ĐẶT ID:** Nếu user nói tên phòng ("Sao Hỏa") hoặc tên người ("Tuấn"), bạn BẮT BUỘC phải gọi tool `get_rooms` hoặc `search_users` để lấy ID. Nếu không tìm thấy, hãy báo lỗi, không được tự đoán ID.
-    2. **XỬ LÝ THỜI GIAN:** - "Chiều nay" = Từ 13:00 đến 17:00 ngày {today_date}.
-       - "Sáng mai" = Từ 08:00 đến 11:00 ngày mai.
-       - Luôn convert sang ISO 8601: YYYY-MM-DDTHH:mm:ss.
-    3. **QUY TRÌNH ĐẶT LỊCH (BẮT BUỘC):**
-       - B1: Nếu thiếu thông tin (Giờ/Phòng/Người) -> Hỏi ngay, không đoán.
-       - B2: Có đủ thông tin -> Gọi tool tra cứu ID (get_rooms, search_users).
-       - B3: **XÁC NHẬN:** Tóm tắt lại "Bạn muốn đặt phòng [Tên] (ID [Số]) lúc [Giờ] với [Người] phải không?".
-       - B4: User đồng ý -> Gọi `create_meeting`.
-    4. **TRẢ LỜI:**
-       - Ngắn gọn. Ví dụ: "Đã tìm thấy phòng A, B.", "Đã đặt thành công."
-       - Nếu gặp lỗi từ hệ thống, hãy báo nguyên văn lỗi đó.
-    5. **TRA CỨU:**
-       - Nếu hỏi "hôm nay có lịch không", gọi `get_my_meetings(date_filter='{today_date}')`.
-       - Nếu hỏi quy định, gọi `search_policy`.
+    [QUY TẮC XỬ LÝ QUAN TRỌNG - TUÂN THỦ TUYỆT ĐỐI]
+    1. **TẠO LỊCH ĐỊNH KỲ:**
+       - Nếu user nói "hàng tuần", "hàng ngày", "mỗi thứ 2"... -> Bắt buộc dùng tham số `recurrence`.
+       - `frequency`: CHỈ CHẤP NHẬN: "DAILY", "WEEKLY", "MONTHLY", "YEARLY" (Viết hoa).
+       - `daysOfWeek`: CHỈ CHẤP NHẬN: "MONDAY", "TUESDAY", ... (Viết hoa).
+       
+    2. **XỬ LÝ CHUỖI LỊCH (SERIES):**
+       - Lịch định kỳ được quản lý bằng `seriesId` (String), KHÔNG phải `meeting_id` (Int).
+       - Nếu user muốn sửa/hủy "toàn bộ chuỗi" hoặc "tất cả các buổi":
+         - B1: Gọi `get_my_meetings` hoặc `get_meeting_details` để tìm `seriesId`.
+         - B2: Gọi `update_meeting_series` hoặc `cancel_meeting_series`.
+         
+    3. **KHÔNG BỊA ĐẶT ID:**
+       - Nếu user nói tên phòng (vd: "phòng sao hỏa"), BẮT BUỘC phải gọi `get_rooms` để tìm ID của nó trước.
+       - Không được tự ý điền ID bừa bãi (vd: ID=1) nếu chưa xác nhận.
+       
+    4. **PHẢN HỒI:** Ngắn gọn, súc tích.
     """
 
     try:
-        # Gửi prompt kèm tin nhắn để đảm bảo bot luôn nhớ nhiệm vụ
         response = chat.send_message(f"{system_instruction}\nUser: {user_message}")
     except Exception as e:
+        print(f"❌ Error Gemini: {e}")
         return "Hệ thống AI đang bận. Vui lòng thử lại sau."
 
     turn = 0
-    max_turns = 8 # Giới hạn số bước để tránh lặp vô tận
+    max_turns = 8 
     
     while turn < max_turns:
         part = response.parts[0]
         
-        # Nếu AI trả lời Text -> Trả về luôn
         if not part.function_call:
             bot_reply = response.text
             save_chat_turn(user_token, user_message, bot_reply)
             return bot_reply
 
-        # Nếu AI gọi Hàm
         fc = part.function_call
         fname = fc.name
         args = fc.args
@@ -232,15 +270,27 @@ async def simple_chat(user_message: str, user_token: str):
             if fname in available_tools:
                 func = available_tools[fname]
                 
+                # --- LOGIC QUAN TRỌNG: FIX LỖI REPEATED COMPOSITE ---
+                # Chuyển đổi dữ liệu từ Protobuf sang Python Native Types trước khi gọi hàm
                 call_args = {"token": user_token}
                 for key, value in args.items():
-                    # Ép kiểu dữ liệu để tránh lỗi API Java
-                    if key in ["room_id", "meeting_id", "capacity", "duration", "interval"]:
-                        call_args[key] = int(value)
+                    if key == "recurrence":
+                        # Convert MapComposite -> Dict
+                        rec_dict = dict(value)
+                        
+                        # QUAN TRỌNG NHẤT: Ép kiểu daysOfWeek từ RepeatedComposite -> List
+                        if "daysOfWeek" in rec_dict:
+                            rec_dict["daysOfWeek"] = list(rec_dict["daysOfWeek"])
+                            
+                        call_args[key] = rec_dict
+                        
                     elif key in ["participant_ids", "device_ids"]:
+                        # Convert RepeatedComposite -> List Int
                         call_args[key] = [int(x) for x in value]
-                    elif key == "recurrence":
-                        call_args[key] = dict(value)
+                        
+                    elif key in ["room_id", "meeting_id", "capacity", "duration", "interval"]:
+                        call_args[key] = int(value)
+                        
                     else:
                         call_args[key] = value
                 
@@ -252,7 +302,6 @@ async def simple_chat(user_message: str, user_token: str):
 
         print(f"✅ [API Result] {result}")
 
-        # Gửi kết quả lại cho AI
         response = chat.send_message(
             Content(parts=[Part(function_response=FunctionResponse(name=fname, response={"result": result}))])
         )
