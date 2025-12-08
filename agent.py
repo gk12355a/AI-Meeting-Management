@@ -203,7 +203,7 @@ def save_chat_turn(user_token: str, user_msg: str, bot_msg: str):
         hist = json.loads(data) if data else []
         hist.append({"role": "user", "text": user_msg})
         hist.append({"role": "model", "text": bot_msg})
-        if len(hist) > 10: hist = hist[-10:] 
+        if len(hist) > 20: hist = hist[-20:] 
         redis_client.set(key, json.dumps(hist))
         redis_client.expire(key, 1800) 
     except: pass
