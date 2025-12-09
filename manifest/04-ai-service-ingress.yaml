@@ -1,0 +1,35 @@
+# 1. Service nội bộ
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-svc
+  namespace: meeting-system
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8000        # Cổng Service
+      targetPort: 8000  # Cổng Container
+      protocol: TCP
+  selector:
+    app: ai-agent
+
+---
+# 2. Ingress (Public Domain)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ai-ingress
+  namespace: meeting-system
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: ai-meeting.co
+      http:
+        paths:
+          - backend:
+              service:
+                name: ai-svc
+                port:
+                  number: 8000
+            path: /
+            pathType: Prefix
