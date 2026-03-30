@@ -5,7 +5,7 @@ import google.generativeai as genai
 from dotenv import load_dotenv
 
 # 1. Cấu hình môi trường & URL chuẩn hóa
-load_dotenv()
+load_dotenv(override=True)
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 # --- LOGIC XỬ LÝ URL THÔNG MINH ---

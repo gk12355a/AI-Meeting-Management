@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 
 # 1. CẤU HÌNH API KEY
 
-load_dotenv()
+load_dotenv(override=True)
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 if not GEMINI_API_KEY:
