@@ -8,7 +8,7 @@ pipeline {
     environment {
         // --- CẤU HÌNH DOCKER ---
         DOCKER_REGISTRY_USER = "gk123a"
-        IMAGE_NAME = "ai-meeting-management"
+        IMAGE_NAME = "ai"
         DOCKER_CREDENTIALS_ID = "docker-hub-credentials"
        
         // --- CẤU HÌNH GIT ---
@@ -70,6 +70,10 @@ pipeline {
         }
 
         stage('GitOps: Commit & Push') {
+            environment {
+                NEW_TAG = "${params.BUILD_TAG}"
+                CLEAN_URL = "${GIT_REPO_URL.replace("https://", "")}"
+            }
             steps {
                 withCredentials([
                     usernamePassword(
@@ -86,9 +90,9 @@ pipeline {
                         git add $YAML_DIR/*.yaml
 
                         if ! git diff --cached --quiet; then
-                            git commit -m "GitOps: Update ${IMAGE_NAME} image to ${params.BUILD_TAG} [ci skip]"
+                            git commit -m "GitOps: Update $IMAGE_NAME image to $NEW_TAG [ci skip]"
                             git pull origin $BRANCH --rebase
-                            git push https://$GIT_USER:$GIT_PASS@${GIT_REPO_URL.replace("https://", "")} $BRANCH
+                            git push https://$GIT_USER:$GIT_PASS@$CLEAN_URL $BRANCH
                         else
                             echo "No changes in manifest to commit."
                         fi
