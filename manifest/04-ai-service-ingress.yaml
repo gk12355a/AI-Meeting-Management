@@ -1,4 +1,3 @@
-# 1. Service nội bộ
 apiVersion: v1
 kind: Service
 metadata:
@@ -7,21 +6,19 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-    - port: 8000        # Cổng Service
-      targetPort: 8000  # Cổng Container
+    - port: 8000
+      targetPort: 8000
       protocol: TCP
   selector:
     app: ai-agent
-
 ---
-# 2. Ingress (Public Domain)
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: ai-ingress
   namespace: meeting-system
 spec:
-  ingressClassName: nginx
+  ingressClassName: haproxy # <-- ĐÃ SỬA TỪ NGINX THÀNH HAPROXY
   rules:
     - host: ai-meeting.co
       http:
