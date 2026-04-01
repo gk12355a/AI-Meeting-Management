@@ -21,7 +21,7 @@ metadata:
   name: ai-ingress
   namespace: meeting-system
 spec:
-  ingressClassName: nginx
+  ingressClassName: haproxy
   rules:
     - host: ai-meeting.co
       http:
