@@ -11,3 +11,4 @@ venv/
 .idea/
 chroma_db/
 logs/
+01-config-secret.yaml

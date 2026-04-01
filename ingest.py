@@ -19,7 +19,7 @@ from typing import List
 
 # 1. CẤU HÌNH MÔI TRƯỜNG & GEMINI
 
-load_dotenv()
+load_dotenv(override=True)
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 if not GEMINI_API_KEY:

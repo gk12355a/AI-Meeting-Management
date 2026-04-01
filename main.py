@@ -7,7 +7,7 @@ from agent import simple_chat
 import uvicorn
 
 # 1. Load biến môi trường
-load_dotenv()
+load_dotenv(override=True)
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173") # Giá trị mặc định nếu quên config
 
 app = FastAPI()

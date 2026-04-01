@@ -11,7 +11,7 @@ from google.ai.generativelanguage import FunctionDeclaration, Tool, Schema, Type
 from google.ai.generativelanguage import Content, Part, FunctionResponse
 
 # 1. Configuration
-load_dotenv()
+load_dotenv(override=True)
 api_key = os.getenv("GEMINI_API_KEY")
 if not api_key:
     raise ValueError("Missing GEMINI_API_KEY in .env file")

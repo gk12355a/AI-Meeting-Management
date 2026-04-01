@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-deployment
+  namespace: meeting-system
+  labels:
+    app: ai-agent
+spec:
+  replicas: 1 # ChromaDB dùng file SQLite nên chỉ chạy 1 Replica để tránh lỗi khóa file
+  selector:
+    matchLabels:
+      app: ai-agent
+  template:
+    metadata:
+      labels:
+        app: ai-agent
+    spec:
+      containers:
+        - name: ai-agent
+          image: gk123a/ai:v1
+          imagePullPolicy: IfNotPresent # Hoặc Always nếu bạn cập nhật image liên tục
+          ports:
+            - containerPort: 8000
+              protocol: TCP
+          
+          # Nạp biến môi trường từ ConfigMap và Secret
+          envFrom:
+            - configMapRef:
+                name: ai-config
+            - secretRef:
+                name: ai-secrets
+          
+          # Mount NFS vào đường dẫn DB trong container
+          volumeMounts:
+            - mountPath: /app/chroma_db
+              name: chroma-storage
+          
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+      
+      volumes:
+        - name: chroma-storage
+          persistentVolumeClaim:
+            claimName: chroma-pvc
